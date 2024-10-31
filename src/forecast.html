@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather Wise - Forecast</title>
+    <link rel="stylesheet" href="forecast.css">
+</head>
+<body>
+    <header>
+        <div class="header-title">
+            <img src="WeatherWise Logo.png" alt="WeatherWise Logo">
+            <h1>WeatherWise</h1>
+        </div>
+        <nav>
+            <a href="index.html">Home</a>
+            <a href="forecast.html">Forecast</a>
+            <a href="about.html">About</a>
+        </nav>
+    </header>
+    
+    <div class="container">
+        <div class="weather-container">
+            <h2>Check the Weather</h2>
+            <div class="input-container">
+                <input type="text" id="city-input" placeholder="Enter city or place">
+                <button onclick="fetchWeather()">Get Weather</button>
+            </div>
+            <center><h3>Today's Weather</h3></center>
+            <div id="weather-info">
+                <div class="flex-container">
+                    <div class="card" id="today-weather">
+                        <!-- Today's weather details will be displayed here -->
+                    </div>
+                    <div class="card" id="activity-recommendation">
+                        <!-- Activity recommendation will be displayed here -->
+                    </div>
+                </div>
+                <div class="forecast" id="forecast">
+                    <h3>Weather Forecast for Other Days</h3>
+                    <div class="forecast-grid">
+                        <!-- Forecast for other days will be displayed here -->
+                    </div>
+                </div>
+            </div>
+            <div class="loading" id="loading" style="display: none;">Loading...</div>
+            <div class="error-message" id="error-message"></div>
+            <div class="save-read">
+                <br>
+                <input type="file" id="fileInput" style="display:none;">
+                <center><button id="saveWeatherButton">Save Weather Info</button></center>
+                <input type="file" id="fileInput" style="display:none;">
+                <button onclick="document.getElementById('fileInput').click();">Read Saved Weather Info</button>
+                <div id="savedWeatherInfo"></div>
+            </div>
+        </div>
+
+        <div class="activity-section">
+            <h2>Outdoor Activities</h2>
+            <div class="add-activity">
+                <input type="text" id="activity-name" placeholder="Activity Name">
+                <input type="text" id="activity-equipment" placeholder="Required Equipment">
+                <button onclick="addActivity()">Add Activity</button>
+            </div>
+            <div id="activity-list">
+                <h3>Activities</h3>
+                <!-- Activities will be displayed here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function fetchWeather() {
+            const apiKey = 'c4800da2c0254dff9c9112012241510';
+            const city = document.getElementById('city-input').value;
+            const todayWeather = document.getElementById('today-weather');
+            const activityRecommendation = document.getElementById('activity-recommendation');
+            const forecastGrid = document.querySelector('.forecast-grid');
+            const loading = document.getElementById('loading');
+            const errorMessage = document.getElementById('error-message');
+
+            todayWeather.innerHTML = '';
+            activityRecommendation.innerHTML = '';
+            forecastGrid.innerHTML = '';
+            loading.style.display = 'block';
+            errorMessage.innerHTML = '';
+
+            const url = `https://api.weatherapi.com/v1/forecast.json?key=${apiKey}&q=${city}&days=4`;
+
+            fetch(url)
+                .then(response => {
+                    loading.style.display = 'none';
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok ' + response.statusText);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.error) {
+                        throw new Error(data.error.message);
+                    }
+
+                    const today = data.forecast.forecastday[0];
+                    const locationInfo = `
+                        <div>
+                            <p><strong>Local Time:</strong> ${data.location.localtime}</p>
+                            <p><strong>City:</strong> ${data.location.name}, ${data.location.country}</p>
+                            <p><strong>Current Temp:</strong> ${data.current.temp_c} °C</p>
+                            <p><strong>Condition:</strong> ${data.current.condition.text}</p>
+                            <p><strong>Feels Like:</strong> ${data.current.feelslike_c} °C</p>
+                            <p><strong>Humidity:</strong> ${data.current.humidity} %</p>
+                            <p><strong>Wind:</strong> ${data.current.wind_kph} kph</p>
+                            <p><strong>UV Index:</strong> ${data.current.uv}</p>
+                        </div>
+                        <img src="https:${data.current.condition.icon}" alt="Weather icon">
+                    `;
+
+                    todayWeather.innerHTML = locationInfo;
+
+                    const activity = getActivityRecommendation(data.current.condition.text);
+                    activityRecommendation.innerHTML = activity;
+
+                    let forecastHTML = '';
+                    for (let i = 1; i < data.forecast.forecastday.length; i++) {
+                        const day = data.forecast.forecastday[i];
+                        forecastHTML += `
+                            <div class="forecast-day">
+                                <h4>${new Date(day.date).toLocaleDateString()}</h4>
+                                <p><strong>Max Temp:</strong> ${day.day.maxtemp_c} °C</p>
+                                <p><strong>Min Temp:</strong> ${day.day.mintemp_c} °C</p>
+                                <p><strong>Condition:</strong> ${day.day.condition.text}</p>
+                                <p><strong>Avg Humidity:</strong> ${day.day.avghumidity}%</p>
+                                <p><strong>UV Index:</strong> ${day.day.uv}</p>
+                                <img src="https:${day.day.condition.icon}" alt="Weather icon">
+                            </div>
+                        `;
+                    }
+
+                    forecastGrid.innerHTML = forecastHTML;
+                })
+                .catch(error => {
+                    loading.style.display = 'none';
+                    errorMessage.innerHTML = `<p style="color: red;">${error.message}</p>`;
+                });
+        }
+
+        function getActivityRecommendation(condition) {
+            let recommendation = '<div><h3>Activity Recommendation:</h3>';
+            if (condition.includes("rain")) {
+                recommendation += `
+                    <img src="rain_walk.png" alt="Rainy day activity">
+                    <p>It’s rainy, great for a walk on the trail! Enjoy the quiet and reconnect with nature in the peacefulness of the rain</p>
+                `;
+            } else if (condition.includes("Sunny")) {
+                recommendation += `
+                    <img src="hiking.png" alt="Sunny day outdoor activity">
+                    <img src="picnic.png" alt="Sunny day outdoor activity">
+                    <p>Sunny day! Perfect for a hike, beach day, or a picnic in the park.</p>
+                `;
+            } else {
+                recommendation += `
+                    <img src="badminton.png" alt="Moderate weather activity">
+                    <img src="jogging.png" alt="Moderate weather activity">
+                    <img src="football.png" alt="Moderate weather activity">
+                    <p>It’s moderate weather. Ideal for a stroll or some light outdoor exercise.</p>
+                `;
+            }
+            recommendation += '</div>';
+            return recommendation;
+        }
+
+        const activities = [];
+        function addActivity() {
+            const activityName = document.getElementById('activity-name').value;
+            const activityEquipment = document.getElementById('activity-equipment').value;
+            if (activityName === '' || activityEquipment === '') {
+                alert('Please fill in both fields.');
+                return;
+            }
+            const activity = { name: activityName, equipment: activityEquipment };
+            activities.push(activity);
+            document.getElementById('activity-name').value = '';
+            document.getElementById('activity-equipment').value = '';
+            displayActivities();
+        }
+
+        function displayActivities() {
+            const activityList = document.getElementById('activity-list');
+            activityList.innerHTML = '<h3>Activities</h3>';
+            activities.forEach((activity, index) => {
+                activityList.innerHTML += `
+                    <div class="activity-item">
+                        <div>
+                            <strong>${activity.name}</strong> - Required Equipment: ${activity.equipment}
+                        </div>
+                        <div class="activity-edit-buttons">
+                            <button onclick="editActivity(${index})">Edit</button>
+                            <button onclick="removeActivity(${index})">Remove</button>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function removeActivity(index) {
+            activities.splice(index, 1);
+            displayActivities();
+        }
+
+        function editActivity(index) {
+            const activity = activities[index];
+            document.getElementById('activity-name').value = activity.name;
+            document.getElementById('activity-equipment').value = activity.equipment;
+            removeActivity(index);
+        }
+
+        // Save and read weather information
+        const saveWeatherButton = document.getElementById('saveWeatherButton');
+        saveWeatherButton.addEventListener('click', () => {
+            const weatherData = {
+                location: document.getElementById('city-input').value,
+                localTime: new Date().toLocaleString(),
+                temperature: document.querySelector("#today-weather p:nth-child(3)").textContent,
+                feelsLike: document.querySelector("#today-weather p:nth-child(4)").textContent,
+                forecast: document.querySelector("#today-weather p:nth-child(5)").textContent,
+                humidity: document.querySelector("#today-weather p:nth-child(6)").textContent,
+                windSpeed: document.querySelector("#today-weather p:nth-child(7)").textContent
+            };
+
+            const blob = new Blob([JSON.stringify(weatherData, null, 2)], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'weather_info.txt';
+            a.click();
+            URL.revokeObjectURL(url);
+        });
+
+        document.getElementById('fileInput').addEventListener('change', () => {
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const content = event.target.result;
+                    displaySavedWeatherInfo(content);
+                };
+                reader.readAsText(file);
+            } else {
+                alert('Please select a file to read.');
+            }
+        });
+
+        function displaySavedWeatherInfo(content) {
+            const weatherData = JSON.parse(content);
+            document.getElementById('savedWeatherInfo').innerHTML = `
+                <h3>Saved Weather Information:</h3>
+                <p>Location: ${weatherData.location}</p>
+                <p>Local Time: ${weatherData.localTime}</p>
+                <p>Temperature: ${weatherData.temperature}</p>
+                <p>Feels Like: ${weatherData.feelsLike}</p>
+                <p>Forecast: ${weatherData.forecast}</p>
+                <p>Wind Speed: ${weatherData.windSpeed}</p>
+                <p>Humidity: ${weatherData.humidity}</p>
+            `;
+        }
+    </script>
+</body>
+<footer>
+    <p>&copy; 2024 Weather Wise. All rights reserved.</p>
+</footer>
+</html> 
